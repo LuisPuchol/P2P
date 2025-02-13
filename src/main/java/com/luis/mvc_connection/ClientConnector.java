@@ -6,31 +6,34 @@ import java.net.Socket;
 public class ClientConnector implements Runnable {
     private String peerIp;
     private int port;
+    private CommunicationControl control;
 
-    public ClientConnector(String peerIp, int port) {
+    public ClientConnector(String peerIp, int port, CommunicationControl control) {
         this.peerIp = peerIp;
         this.port = port;
+        this.control = control;
     }
 
     @Override
     public void run() {
-        while (true) {
+        while (!control.isConnected()) {
             try {
                 Socket socket = new Socket(peerIp, port);
-                System.out.println("Conectado al peer: " + peerIp + " en el puerto " + port);
-
-                new Thread(new Channel(socket)).start(); // Crear un canal para la comunicación
-                break; // Salir del loop una vez conectado
+                control.setConnected(true);
+                System.out.println("Conectado al peer en puerto " + port);
+                Channel channel = new Channel(socket);
+                control.setActiveChannel(channel);
+                new Thread(channel).start();
+                break;
             } catch (IOException e) {
-                System.out.println("No se pudo conectar con el peer en " + peerIp + ":" + port + ", reintentando...");
+                System.out.println("Esperando peer en puerto " + port);
             }
 
             try {
-                Thread.sleep(250); // 4 intentos por segundo
+                Thread.sleep(250);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
     }
 }
-
